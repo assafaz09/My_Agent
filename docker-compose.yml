@@ -1,0 +1,49 @@
+services:
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: assaf-agent-qdrant
+    ports:
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6334
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    build: .
+    container_name: assaf-agent-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./data:/app/data
+      - ./static:/app/static
+      - ./assaf_files:/app/assaf_files
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6334
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+    env_file:
+      - .env
+    depends_on:
+      - qdrant
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build: ./frontend
+    container_name: assaf-agent-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:

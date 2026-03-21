@@ -1,0 +1,28 @@
+Assaf Azran - Personal Information
+
+This is a test file to verify the upload system works.
+
+About Me:
+- Name: Assaf Azran
+- Role: Full Stack Developer & AI Engineer
+- Skills: Python, React, TypeScript, Docker, AI/ML
+- Languages: Hebrew (Native), English (Fluent)
+- Location: Israel
+
+Experience:
+- Full stack development with modern frameworks
+- AI agent development and integration
+- System architecture and DevOps
+- Team leadership and project management
+
+Communication Style:
+- Direct and clear
+- Technical but accessible
+- Collaborative and helpful
+- Detail-oriented
+
+Goals:
+- Build innovative AI solutions
+- Create meaningful user experiences
+- Lead successful technical teams
+- Continue learning and growing
