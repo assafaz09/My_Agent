@@ -9,9 +9,19 @@ logger = logging.getLogger(__name__)
 
 class OpenAIService:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        # Lazy-init the client so the server can start even if OPENAI_API_KEY
+        # is missing in the environment (common on serverless cold starts).
+        self.client = None
         self.model = settings.openai_model
         self.embedding_model = settings.openai_embedding_model
+
+    def _get_client(self) -> AsyncOpenAI:
+        if self.client is not None:
+            return self.client
+        if not settings.openai_api_key:
+            raise RuntimeError("OPENAI_API_KEY is not configured")
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        return self.client
     
     async def chat_completion(
         self,
@@ -21,7 +31,8 @@ class OpenAIService:
     ) -> str:
         """Get chat completion from OpenAI"""
         try:
-            response = await self.client.chat.completions.create(
+            client = self._get_client()
+            response = await client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=temperature,
@@ -35,7 +46,8 @@ class OpenAIService:
     async def generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for text"""
         try:
-            response = await self.client.embeddings.create(
+            client = self._get_client()
+            response = await client.embeddings.create(
                 model=self.embedding_model,
                 input=text
             )
@@ -66,8 +78,9 @@ class OpenAIService:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"File type: {file_type}\n\nContent:\n{text}"}
             ]
-            
-            response = await self.client.chat.completions.create(
+
+            client = self._get_client()
+            response = await client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=0.1,  # Lower temperature for structured extraction

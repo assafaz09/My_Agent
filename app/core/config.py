@@ -4,7 +4,9 @@ import os
 
 class Settings(BaseSettings):
     # OpenAI Configuration
-    openai_api_key: str
+    # In production (e.g. Vercel), env vars might be missing during cold start.
+    # Keep this optional so imports don't crash; endpoints can return safe fallbacks.
+    openai_api_key: Optional[str] = None
     openai_model: str = "gpt-4"
     openai_embedding_model: str = "text-embedding-3-small"
     

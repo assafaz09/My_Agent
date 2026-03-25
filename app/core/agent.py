@@ -29,7 +29,23 @@ class PersonalAgent:
         """Generate response using knowledge base and personal context"""
         try:
             # Generate embedding for user message
-            message_embedding = await self.openai_service.generate_embedding(message)
+            try:
+                message_embedding = await self.openai_service.generate_embedding(message)
+            except Exception as e:
+                # If OpenAI isn't configured/available, return a safe response.
+                logger.error(f"OpenAI embedding failed, returning fallback response: {e}")
+                fallback_response = (
+                    "וואלה כרגע אני לא מצליח לענות כי שירות ה-AI לא זמין אצלנו. נסה שוב עוד רגע."
+                    if language == "he"
+                    else "Right now I can't answer because the AI service isn't available. Try again in a moment."
+                )
+                return {
+                    "response": fallback_response,
+                    "language": language,
+                    "sources": [],
+                    "personal_context_used": False,
+                    "search_method": "no_knowledge",
+                }
             
             # Search knowledge base
             try:
@@ -69,11 +85,26 @@ class PersonalAgent:
                 })
             
             # Generate response
-            response = await self.openai_service.chat_completion(
-                messages=messages,
-                temperature=0.4,
-                max_tokens=450
-            )
+            try:
+                response = await self.openai_service.chat_completion(
+                    messages=messages,
+                    temperature=0.4,
+                    max_tokens=450
+                )
+            except Exception as e:
+                logger.error(f"OpenAI chat completion failed, returning fallback response: {e}")
+                fallback_response = (
+                    "וואלה כרגע אני לא מצליח לגבש תשובה. נסה שוב עוד רגע."
+                    if language == "he"
+                    else "Right now I can't generate a response. Try again in a moment."
+                )
+                return {
+                    "response": fallback_response,
+                    "language": language,
+                    "sources": [],
+                    "personal_context_used": False,
+                    "search_method": "no_knowledge",
+                }
             
             # Detect response language
             response_language = await self.openai_service.analyze_language(response)
@@ -87,8 +118,20 @@ class PersonalAgent:
             }
             
         except Exception as e:
-            logger.error(f"Chat error: {e}")
-            raise
+            # Last-resort: never crash the serverless handler.
+            logger.error(f"Chat error (last-resort fallback): {e}")
+            fallback_response = (
+                "וואלה משהו השתבש בצד שלנו. נסה שוב עוד רגע."
+                if language == "he"
+                else "Something went wrong on our side. Try again in a moment."
+            )
+            return {
+                "response": fallback_response,
+                "language": language,
+                "sources": [],
+                "personal_context_used": False,
+                "search_method": "no_knowledge",
+            }
     
     async def _get_personal_profile(self) -> PersonalProfile:
         """Get or build personal profile"""
