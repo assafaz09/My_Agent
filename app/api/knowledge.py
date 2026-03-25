@@ -21,7 +21,9 @@ async def list_knowledge():
         documents = await vector_db.get_all_documents()
         return documents
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Don't crash the whole serverless function if the vector DB is unreachable.
+        # Return an empty list and let the chat endpoint still work with "no knowledge".
+        return []
 
 @router.get("/search", response_model=List[KnowledgeSearchResult])
 async def search_knowledge(
@@ -40,16 +42,20 @@ async def search_knowledge(
         )
         return results
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return []
 
 @router.get("/profile", response_model=PersonalProfile)
 async def get_personal_profile():
     """Get the agent's understanding of you"""
     try:
-        profile = await agent.build_personal_profile()
-        return profile
+        # Use the safe internal getter that already returns an empty/error profile
+        # instead of crashing when the vector DB is unavailable.
+        return await agent._get_personal_profile()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return PersonalProfile(
+            profile_id="error",
+            last_updated=datetime.now(),
+        )
 
 @router.delete("/{document_id}")
 async def delete_knowledge(document_id: str):
@@ -82,4 +88,4 @@ async def get_knowledge_stats():
         stats = await vector_db.get_collection_stats()
         return stats
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {}

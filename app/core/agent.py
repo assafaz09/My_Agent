@@ -32,11 +32,17 @@ class PersonalAgent:
             message_embedding = await self.openai_service.generate_embedding(message)
             
             # Search knowledge base
-            relevant_knowledge = await self.vector_db.search_knowledge(
-                query=message,
-                embedding=message_embedding,
-                limit=settings.max_knowledge_results
-            )
+            try:
+                relevant_knowledge = await self.vector_db.search_knowledge(
+                    query=message,
+                    embedding=message_embedding,
+                    limit=settings.max_knowledge_results
+                )
+            except Exception as e:
+                # In production environments (e.g. serverless), the vector DB might be unreachable.
+                # Don't crash the whole function; fall back to "no knowledge".
+                logger.error(f"Vector DB search failed, falling back to empty knowledge: {e}")
+                relevant_knowledge = []
             
             # Get personal profile
             personal_profile = await self._get_personal_profile()
