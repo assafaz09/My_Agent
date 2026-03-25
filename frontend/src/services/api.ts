@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// If NEXT_PUBLIC_API_URL is not set, we rely on Next.js rewrites and call API routes relatively.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL ?? '',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -138,7 +139,7 @@ export const knowledgeApi = {
 // Health check
 export const healthApi = {
   check: async () => {
-    const response = await api.get('/');
+    const response = await api.get('/health');
     return response.data;
   },
 };
