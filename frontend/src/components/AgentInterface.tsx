@@ -10,10 +10,9 @@ import {
   Sparkles,
   Heart,
   MessageCircle,
-  Mic,
 } from "lucide-react";
-import { chatApi, knowledgeApi } from "@/services/api";
-import { ChatRequest, ChatResponse, PersonalProfile } from "@/services/api";
+import { chatApi } from "@/services/api";
+import { ChatRequest, ChatResponse } from "@/services/api";
 import toast, { Toaster } from "react-hot-toast";
 
 interface Message {
@@ -30,8 +29,6 @@ export default function AgentInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>("");
   const [language] = useState<"en">("en");
-  const [showProfile, setShowProfile] = useState(false);
-  const [profile, setProfile] = useState<PersonalProfile | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -48,23 +45,6 @@ export default function AgentInterface() {
     const newSessionId = `session_${Date.now()}`;
     setSessionId(newSessionId);
   }, []);
-
-  useEffect(() => {
-    // Load profile only when the user actually opens the profile panel,
-    // to avoid noisy errors while the backend is still starting.
-    if (showProfile && !profile) {
-      loadProfile();
-    }
-  }, [showProfile, profile]);
-
-  const loadProfile = async () => {
-    try {
-      const profileData = await knowledgeApi.getProfile();
-      setProfile(profileData);
-    } catch (error) {
-      console.error("Failed to load profile:", error);
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;

@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     # Application Configuration
     app_host: str = "0.0.0.0"
     app_port: int = 8000
-    debug: bool = True
+    # Production default: don't enable debug/reload behavior unless explicitly requested.
+    debug: bool = False
     
     # File Upload Configuration
     max_file_size: int = 52428800  # 50MB in bytes
