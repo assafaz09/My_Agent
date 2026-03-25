@@ -10,8 +10,8 @@ import logging
 from datetime import datetime
 
 from app.services.enhanced_rag import EnhancedRAGService
-from app.services.qdrant_service import QdrantService
 from app.services.openai_service import OpenAIService
+from app.services.vector_db import get_vector_db
 from app.core.config import settings
 from app.models.knowledge import KnowledgeSearchResult
 
@@ -20,26 +20,21 @@ logger = logging.getLogger(__name__)
 class RAGManager:
     def __init__(self):
         self.enhanced_rag = EnhancedRAGService()
-        self.qdrant_service = QdrantService()
+        self.vector_db = get_vector_db()
         self.openai_service = OpenAIService()
     
     async def get_rag_stats(self) -> Dict[str, Any]:
         """Get comprehensive RAG system statistics"""
         try:
             # Get basic stats
-            documents = await self.qdrant_service.get_all_documents()
-            
-            # Get collection info
-            await self.qdrant_service.initialize_collection()
-            collection_info = await self.qdrant_service.client.get_collection(
-                collection_name=self.qdrant_service.collection_name
-            )
+            documents = await self.vector_db.get_all_documents()
+            collection_stats = await self.vector_db.get_collection_stats()
             
             stats = {
                 "total_documents": len(documents),
-                "total_points": collection_info.points_count,
-                "vector_size": collection_info.config.params.vectors.size,
-                "distance_metric": collection_info.config.params.vectors.distance,
+                "total_points": collection_stats.get("vectors_count", 0),
+                "vector_size": collection_stats.get("vector_size"),
+                "distance_metric": collection_stats.get("distance_metric"),
                 "enhanced_rag_initialized": self.enhanced_rag._is_initialized,
                 "last_updated": datetime.now().isoformat(),
                 "documents_by_type": self._count_documents_by_type(documents),
@@ -83,7 +78,7 @@ class RAGManager:
                 start_time = datetime.now()
                 
                 # Basic semantic search
-                semantic_results = await self.qdrant_service.search_knowledge(
+                semantic_results = await self.vector_db.search_knowledge(
                     query=query, embedding=embedding, limit=5
                 )
                 semantic_time = (datetime.now() - start_time).total_seconds()
@@ -181,7 +176,7 @@ class RAGManager:
                 
                 for query in test_queries:
                     embedding = await self.openai_service.generate_embedding(query)
-                    results = await self.qdrant_service.search_knowledge(
+                    results = await self.vector_db.search_knowledge(
                         query=query, embedding=embedding, limit=5, threshold=threshold
                     )
                     
@@ -223,7 +218,7 @@ class RAGManager:
             await self.enhanced_rag.initialize()
             
             # Get current documents
-            documents = await self.qdrant_service.get_all_documents()
+            documents = await self.vector_db.get_all_documents()
             
             rebuild_info = {
                 "documents_processed": len(documents),
@@ -241,7 +236,7 @@ class RAGManager:
     async def export_knowledge_summary(self) -> Dict[str, Any]:
         """Export a summary of all knowledge for review"""
         try:
-            documents = await self.qdrant_service.get_all_documents()
+            documents = await self.vector_db.get_all_documents()
             
             summary = {
                 "total_documents": len(documents),

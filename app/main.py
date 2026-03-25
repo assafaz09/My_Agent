@@ -26,7 +26,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    # We don't need credentials for our frontend requests; keeping this false avoids
+    # invalid CORS combinations (credentials + wildcard origin) that can show up as
+    # generic "Network Error" in the browser.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

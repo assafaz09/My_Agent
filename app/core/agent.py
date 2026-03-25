@@ -1,11 +1,12 @@
 from typing import List, Dict, Any, Optional
 import json
 import logging
+import textwrap
 from datetime import datetime
 
 from app.services.openai_service import OpenAIService
-from app.services.qdrant_service import QdrantService
-from app.core.prompts import SystemPrompts
+from app.services.vector_db import get_vector_db
+from app.core.prompts import SystemPrompts, PersonaTraits
 from app.core.config import settings
 from app.models.chat import ChatMessage
 from app.models.knowledge import PersonalProfile
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class PersonalAgent:
     def __init__(self):
         self.openai_service = OpenAIService()
-        self.qdrant_service = QdrantService()
+        self.vector_db = get_vector_db()
         self.personal_profile_cache = None
         self.profile_cache_timestamp = None
     
@@ -31,7 +32,7 @@ class PersonalAgent:
             message_embedding = await self.openai_service.generate_embedding(message)
             
             # Search knowledge base
-            relevant_knowledge = await self.qdrant_service.search_knowledge(
+            relevant_knowledge = await self.vector_db.search_knowledge(
                 query=message,
                 embedding=message_embedding,
                 limit=settings.max_knowledge_results
@@ -64,8 +65,8 @@ class PersonalAgent:
             # Generate response
             response = await self.openai_service.chat_completion(
                 messages=messages,
-                temperature=0.7,
-                max_tokens=1000
+                temperature=0.4,
+                max_tokens=450
             )
             
             # Detect response language
@@ -113,7 +114,7 @@ class PersonalAgent:
         """Build comprehensive personal profile from knowledge base"""
         try:
             # Get all documents
-            documents = await self.qdrant_service.get_all_documents()
+            documents = await self.vector_db.get_all_documents()
             
             # Aggregate knowledge from all documents
             all_knowledge = {
@@ -174,11 +175,10 @@ class PersonalAgent:
         # Choose the right persona based on language
         if language == "he":
             base_persona = SystemPrompts.STREET_HEBREW_PERSONA
+            strict_rule = SystemPrompts.STRICT_KNOWLEDGE_RULE
         else:
             base_persona = SystemPrompts.STREET_ENGLISH_PERSONA
-        
-        # Add strict knowledge rule
-        strict_rule = SystemPrompts.STRICT_KNOWLEDGE_RULE
+            strict_rule = SystemPrompts.STRICT_KNOWLEDGE_RULE_EN
         
         # Build relevant knowledge context about Assaf
         knowledge_context = ""
@@ -187,7 +187,31 @@ class PersonalAgent:
             for i, chunk in enumerate(relevant_knowledge, 1):
                 knowledge_context += f"{i}. {chunk.content}\n"
         else:
-            knowledge_context = "\n\nאין לי מידע ספציפי על זה מהמסמכים של אסף." if language == "he" else "\n\nI don't have specific information about this from Assaf's documents."
+            knowledge_context = "\n\וואלה התקלת אותי אני לא יודע את התשובה אני אבדוק את זה " if language == "he" else "\n\nI don't have specific information about this from Assaf's documents."
+
+        # Tone snippets (style-only). Never present these as facts.
+        if language == "he":
+            tone_phrases = (
+                PersonaTraits.STREET_COMMUNICATION_STYLES["casual"]["about_assaf"][:2]
+                + PersonaTraits.STREET_COMMUNICATION_STYLES["assaf_isms"]["expressions"][:2]
+                + PersonaTraits.STREET_COMMUNICATION_STYLES["assaf_isms"]["vibe_checks"][:1]
+            )
+            tone_intro = "אם מתאים, אפשר לשזור ביטוי קצר אחד מהוייבים האלה (סטייל בלבד):"
+        else:
+            # Pick English phrases from the same style lists (style-only).
+            tone_phrases = (
+                PersonaTraits.STREET_COMMUNICATION_STYLES["casual"]["about_assaf"][3:5]
+                + PersonaTraits.STREET_COMMUNICATION_STYLES["assaf_isms"]["expressions"][4:6]
+                + PersonaTraits.STREET_COMMUNICATION_STYLES["assaf_isms"]["vibe_checks"][3:4]
+            )
+            tone_intro = "If it fits, you can weave ONE short phrase from these vibe lines (style-only):"
+
+        tone_context = "\n".join([f"- {p}" for p in tone_phrases])
+        tone_fact_disclaimer = (
+            "אלה ביטויי סטייל בלבד. אל תציג אותם כעובדות על אסף שלא מופיעות במסמכים."
+            if language == "he"
+            else "These are style-only phrases. Do NOT present them as facts about Assaf that aren't backed by the documents."
+        )
         
         # Build conversation context
         conversation_context = ""
@@ -198,19 +222,31 @@ class PersonalAgent:
                 if language != "he":
                     role_name = "User" if msg.role == "user" else "Me"
                 conversation_context += f"{role_name}: {msg.content}\n"
-        
+
+        grounding_line = (
+            "תזכור: אתה חבר אמיתי של אסף, לא AI. דבר בצורה טבעית, בלי פורמליות מיותרת."
+            if language == "he"
+            else "Remember: you're Assaf's real friend, not an AI. Be natural and casual, without corporate formalities."
+        )
+
         # Complete system prompt
-        system_prompt = f"""
-{base_persona}
+        system_prompt = textwrap.dedent(
+            f"""
+            {base_persona}
 
-{strict_rule}
+            {strict_rule}
 
-{knowledge_context}
+            {tone_intro}
+            {tone_context}
+            {tone_fact_disclaimer}
 
-{conversation_context}
+            {knowledge_context}
 
-תזכור: אתה חבר אמיתי של אסף, לא AI. דבר בצורה טבעית, בלי פורמליות מיותרת.
-"""
+            {conversation_context}
+
+            {grounding_line}
+            """
+        ).strip()
         
         return system_prompt
     

@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 import os
 
 class Settings(BaseSettings):
@@ -12,6 +12,27 @@ class Settings(BaseSettings):
     qdrant_host: str = "localhost"
     qdrant_port: int = 6334
     qdrant_collection_name: str = "personal_knowledge"
+
+    # Vector DB routing
+    # - qdrant: use Qdrant
+    # - elasticsearch: use Elasticsearch dense_vector
+    # This is intentionally a single backend for now (keeps ops simple).
+    vector_db: str = "qdrant"
+
+    # Elasticsearch Configuration
+    elasticsearch_host: str = "localhost"
+    elasticsearch_port: int = 9200
+    elasticsearch_scheme: str = "http"
+    elasticsearch_index_name: str = "personal_knowledge_chunks"
+    elasticsearch_username: Optional[str] = None
+    elasticsearch_password: Optional[str] = None
+    elasticsearch_api_key: Optional[str] = None
+    elasticsearch_verify_certs: bool = False
+    elasticsearch_request_timeout: int = 60
+    elasticsearch_embedding_dims: int = 1536
+    # Elasticsearch similarity scores are not numerically identical to Qdrant.
+    # With our mapping to [0..1], 0.5 is a safer default than 0.7.
+    elasticsearch_search_threshold: float = 0.5
     
     # Application Configuration
     app_host: str = "0.0.0.0"

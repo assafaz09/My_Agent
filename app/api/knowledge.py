@@ -3,20 +3,22 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.models.knowledge import KnowledgeDocument, KnowledgeSearchResult, PersonalProfile
-from app.services.qdrant_service import QdrantService
+from app.services.vector_db import get_vector_db
 from app.core.agent import PersonalAgent
+from app.services.openai_service import OpenAIService
 
 router = APIRouter()
 
 # Global service instances
-qdrant_service = QdrantService()
+vector_db = get_vector_db()
 agent = PersonalAgent()
+openai_service = OpenAIService()
 
 @router.get("/", response_model=List[KnowledgeDocument])
 async def list_knowledge():
     """List all uploaded knowledge documents"""
     try:
-        documents = await qdrant_service.get_all_documents()
+        documents = await vector_db.get_all_documents()
         return documents
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -25,12 +27,14 @@ async def list_knowledge():
 async def search_knowledge(
     query: str = Query(..., description="Search query"),
     limit: int = Query(5, description="Maximum number of results"),
-    threshold: float = Query(0.7, description="Minimum similarity threshold")
+    threshold: float = Query(0.5, description="Minimum similarity threshold")
 ):
     """Search through personal knowledge"""
     try:
-        results = await qdrant_service.search_knowledge(
+        query_embedding = await openai_service.generate_embedding(query)
+        results = await vector_db.search_knowledge(
             query=query,
+            embedding=query_embedding,
             limit=limit,
             threshold=threshold
         )
@@ -51,7 +55,7 @@ async def get_personal_profile():
 async def delete_knowledge(document_id: str):
     """Remove a knowledge document"""
     try:
-        success = await qdrant_service.delete_document(document_id)
+        success = await vector_db.delete_document(document_id)
         if not success:
             raise HTTPException(status_code=404, detail="Document not found")
         
@@ -75,7 +79,7 @@ async def retrain_knowledge():
 async def get_knowledge_stats():
     """Get statistics about the knowledge base"""
     try:
-        stats = await qdrant_service.get_collection_stats()
+        stats = await vector_db.get_collection_stats()
         return stats
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -11,6 +11,24 @@ services:
       - QDRANT__SERVICE__HTTP_PORT=6334
     restart: unless-stopped
 
+  # Elasticsearch Vector Database
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.12
+    container_name: assaf-agent-elasticsearch
+    ports:
+      - "9200:9200"
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+    environment:
+      - discovery.type=single-node
+      # Security can be enabled in production by setting ELASTICSEARCH_SECURITY_ENABLED=true
+      # and providing ELASTIC_PASSWORD.
+      - xpack.security.enabled=${ELASTICSEARCH_SECURITY_ENABLED:-false}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    restart: unless-stopped
+
   # Backend API
   backend:
     build: .
@@ -23,14 +41,25 @@ services:
       - ./static:/app/static
       - ./assaf_files:/app/assaf_files
     environment:
+      - VECTOR_DB=${VECTOR_DB:-elasticsearch}
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6334
       - APP_HOST=0.0.0.0
       - APP_PORT=8000
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - ELASTICSEARCH_SCHEME=http
+      - ELASTICSEARCH_INDEX_NAME=personal_knowledge_chunks
+      - ELASTICSEARCH_VERIFY_CERTS=false
+      # If you enable security, set these env vars (via .env or your prod secrets)
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-}
+      - ELASTICSEARCH_API_KEY=${ELASTICSEARCH_API_KEY:-}
     env_file:
       - .env
     depends_on:
       - qdrant
+      - elasticsearch
     restart: unless-stopped
 
   # Frontend
@@ -47,3 +76,4 @@ services:
 
 volumes:
   qdrant_data:
+  elastic_data:

@@ -12,7 +12,7 @@ from datetime import datetime
 
 from app.core.config import settings
 from app.services.openai_service import OpenAIService
-from app.services.qdrant_service import QdrantService
+from app.services.vector_db import get_vector_db
 from app.models.knowledge import KnowledgeDocument, KnowledgeChunk
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class FileProcessor:
     def __init__(self):
         self.openai_service = OpenAIService()
-        self.qdrant_service = QdrantService()
+        self.vector_db = get_vector_db()
         
         # Initialize speech recognition
         self.recognizer = sr.Recognizer()
@@ -63,13 +63,13 @@ class FileProcessor:
             chunks = await self._create_chunks_with_embeddings(document)
             await self._update_upload_status(upload_id, "processing", 0.8)
             
-            # Store in Qdrant
+            # Store in vector DB
             try:
-                await self.qdrant_service.add_chunks_with_embeddings(chunks)
+                await self.vector_db.add_chunks_with_embeddings(chunks)
                 await self._update_upload_status(upload_id, "completed", 1.0)
             except Exception as e:
-                logger.error(f"Error storing in Qdrant: {e}")
-                await self._update_upload_status(upload_id, "error", 0.0, f"Qdrant storage error: {str(e)}")
+                logger.error(f"Error storing in vector DB: {e}")
+                await self._update_upload_status(upload_id, "error", 0.0, f"Vector DB storage error: {str(e)}")
                 return
             
             logger.info(f"Successfully processed file: {filename}")
@@ -160,7 +160,7 @@ class FileProcessor:
     async def _create_chunks_with_embeddings(self, document: KnowledgeDocument) -> list[KnowledgeChunk]:
         """Create chunks and generate embeddings"""
         chunks = []
-        text_chunks = self.qdrant_service._chunk_text(document.content)
+        text_chunks = self.vector_db._chunk_text(document.content)
         
         for i, chunk_text in enumerate(text_chunks):
             # Generate embedding
@@ -198,7 +198,7 @@ class FileProcessor:
         """Delete file and its processed data"""
         try:
             # Delete from Qdrant
-            await self.qdrant_service.delete_document(upload_id)
+            await self.vector_db.delete_document(upload_id)
             
             # Delete physical file
             # Note: This would require tracking the actual file path

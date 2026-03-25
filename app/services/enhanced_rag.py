@@ -13,7 +13,7 @@ import logging
 from datetime import datetime
 
 from app.services.openai_service import OpenAIService
-from app.services.qdrant_service import QdrantService
+from app.services.vector_db import get_vector_db
 from app.core.config import settings
 from app.models.knowledge import KnowledgeSearchResult
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class EnhancedRAGService:
     def __init__(self):
         self.openai_service = OpenAIService()
-        self.qdrant_service = QdrantService()
+        self.vector_db = get_vector_db()
         self.tfidf_vectorizer = TfidfVectorizer(
             max_features=1000,
             stop_words='english',
@@ -34,7 +34,7 @@ class EnhancedRAGService:
         """Initialize the RAG service with existing knowledge"""
         try:
             # Load existing documents to build TF-IDF index
-            documents = await self.qdrant_service.get_all_documents()
+            documents = await self.vector_db.get_all_documents()
             if documents:
                 contents = [doc.content for doc in documents]
                 self.tfidf_vectorizer.fit_transform(contents)
@@ -55,7 +55,7 @@ class EnhancedRAGService:
         """
         try:
             # 1. Semantic search (existing)
-            semantic_results = await self.qdrant_service.search_knowledge(
+            semantic_results = await self.vector_db.search_knowledge(
                 query=query,
                 embedding=embedding,
                 limit=limit * 2,  # Get more candidates for re-ranking
@@ -75,7 +75,7 @@ class EnhancedRAGService:
         except Exception as e:
             logger.error(f"Error in hybrid search: {e}")
             # Fallback to semantic search only
-            return await self.qdrant_service.search_knowledge(
+            return await self.vector_db.search_knowledge(
                 query=query, embedding=embedding, limit=limit, threshold=threshold
             )
     
@@ -86,7 +86,7 @@ class EnhancedRAGService:
                 return []
             
             # Get all documents
-            documents = await self.qdrant_service.get_all_documents()
+            documents = await self.vector_db.get_all_documents()
             if not documents:
                 return []
             

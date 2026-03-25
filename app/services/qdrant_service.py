@@ -142,12 +142,22 @@ class QdrantService:
             
             results = []
             for hit in search_result:
+                payload = hit.payload or {}
+                metadata = payload.get("metadata", {}) or {}
+                document_id = metadata.get("document_id")
+                if not document_id:
+                    hit_id = str(hit.id)
+                    if "_chunk_" in hit_id:
+                        document_id = hit_id.split("_chunk_", 1)[0]
+                    else:
+                        document_id = ""
+
                 result = KnowledgeSearchResult(
                     chunk_id=hit.id,
-                    document_id=hit.payload["metadata"]["document_id"],
-                    content=hit.payload["content"],
+                    document_id=document_id,
+                    content=payload.get("content", ""),
                     score=hit.score,
-                    metadata=hit.payload["metadata"]
+                    metadata=metadata
                 )
                 results.append(result)
             
@@ -172,21 +182,29 @@ class QdrantService:
             
             documents = {}
             for point in scroll_result[0]:
-                metadata = point.payload["metadata"]
-                document_id = metadata["document_id"]
+                metadata = point.payload.get("metadata", {}) or {}
+                # Backward compatibility: some previously stored points might miss metadata.document_id.
+                # We try to infer it from chunk id format: "<document_id>_chunk_<i>".
+                document_id = metadata.get("document_id")
+                if not document_id:
+                    point_id = str(point.id)
+                    if "_chunk_" in point_id:
+                        document_id = point_id.split("_chunk_", 1)[0]
+                if not document_id:
+                    continue
                 
                 if document_id not in documents:
                     documents[document_id] = {
                         "document_id": document_id,
-                        "filename": metadata["filename"],
-                        "file_type": metadata["file_type"],
+                        "filename": metadata.get("filename", "unknown"),
+                        "file_type": metadata.get("file_type", "unknown"),
                         "content": "",
                         "metadata": metadata,
-                        "created_at": point.payload["created_at"],
+                        "created_at": point.payload.get("created_at", datetime.now().isoformat()),
                         "chunks": []
                     }
                 
-                documents[document_id]["chunks"].append(point.payload["content"])
+                documents[document_id]["chunks"].append(point.payload.get("content", ""))
             
             # Combine chunks into full content
             document_list = []
@@ -240,7 +258,9 @@ class QdrantService:
                 "vectors_count": collection_info.vectors_count,
                 "segments_count": collection_info.segments_count,
                 "disk_data_size": collection_info.disk_data_size,
-                "ram_data_size": collection_info.ram_data_size
+                "ram_data_size": collection_info.ram_data_size,
+                "vector_size": collection_info.config.params.vectors.size,
+                "distance_metric": collection_info.config.params.vectors.distance
             }
             
         except Exception as e:
