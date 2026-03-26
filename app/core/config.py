@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from typing import List, Optional
 import os
 
@@ -56,6 +57,17 @@ class Settings(BaseSettings):
     # Session Configuration
     session_timeout: int = 3600  # 1 hour
     max_conversation_length: int = 20
+
+    @field_validator("qdrant_port", "elasticsearch_port", mode="before")
+    @classmethod
+    def _clean_port_values(cls, v):
+        """
+        Normalize port values from env vars.
+        Vercel UI values can accidentally include trailing whitespace/newlines.
+        """
+        if isinstance(v, str):
+            v = v.strip()
+        return v
     
     @property
     def allowed_extensions(self) -> List[str]:
