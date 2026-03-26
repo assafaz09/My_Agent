@@ -69,6 +69,21 @@ class Settings(BaseSettings):
 # Create global settings instance
 settings = Settings()
 
-# Ensure directories exist
-os.makedirs(settings.upload_dir, exist_ok=True)
-os.makedirs(settings.data_dir, exist_ok=True)
+def _ensure_writable_dir(path_value: str) -> str:
+    """
+    Ensure a writable directory exists.
+    On serverless platforms (like Vercel), project paths are read-only.
+    In that case, fall back to /tmp/<dir_name>.
+    """
+    try:
+        os.makedirs(path_value, exist_ok=True)
+        return path_value
+    except OSError:
+        fallback = os.path.join("/tmp", os.path.basename(path_value.rstrip("/\\")) or "runtime")
+        os.makedirs(fallback, exist_ok=True)
+        return fallback
+
+
+# Ensure runtime directories exist and are writable.
+settings.upload_dir = _ensure_writable_dir(settings.upload_dir)
+settings.data_dir = _ensure_writable_dir(settings.data_dir)
