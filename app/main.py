@@ -3,9 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 from contextlib import asynccontextmanager
+import importlib
+import logging
 
 from app.core.config import settings
-from app.api import chat, upload, knowledge
+
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,10 +37,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
-app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
-app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
+# Include routers defensively so one failing import won't crash the whole function.
+def _include_router_safe(module_path: str, prefix: str, tags: list[str]) -> None:
+    try:
+        module = importlib.import_module(module_path)
+        app.include_router(module.router, prefix=prefix, tags=tags)
+        logger.info(f"Loaded router: {module_path}")
+    except Exception as e:
+        logger.exception(f"Failed loading router {module_path}: {e}")
+
+
+_include_router_safe("app.api.chat", "/api/chat", ["chat"])
+_include_router_safe("app.api.upload", "/api/upload", ["upload"])
+_include_router_safe("app.api.knowledge", "/api/knowledge", ["knowledge"])
 
 @app.get("/")
 async def root():
