@@ -1,10 +1,12 @@
 import axios from 'axios';
 
-// If NEXT_PUBLIC_API_URL is not set, we rely on Next.js rewrites and call API routes relatively.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+// Production-safe fallback:
+// If NEXT_PUBLIC_API_URL is missing in the frontend deployment, call the backend directly.
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://my-agent-swart.vercel.app";
 
 const api = axios.create({
-  baseURL: API_BASE_URL ?? '',
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
