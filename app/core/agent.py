@@ -277,20 +277,25 @@ class PersonalAgent:
             else "These are style-only phrases. Do NOT present them as facts about Assaf that aren't backed by the documents."
         )
         
-        # Build conversation context
+        # Build conversation context (enough turns to infer tone / register from the thread)
         conversation_context = ""
         if conversation_history:
-            conversation_context = "\n\nשיחה קודמת:\n" if language == "he" else "\n\nPrevious conversation:\n"
-            for msg in conversation_history[-3:]:  # Last 3 messages
+            adapt_intro = (
+                "\n\nמהשיחה למטה — **הסק** איך לדבר עם מי שמולך **רק לפי מה שנכתב** (טון, רמה, שפה) והתאם את הדיבור; בלי להמציא פרטים עליו/ה.\nשיחה קודמת:\n"
+                if language == "he"
+                else "\n\nFrom the thread below: infer how to talk to this person **only from what they wrote** (tone, level, language) and match your style—don't invent facts about them.\nPrevious conversation:\n"
+            )
+            conversation_context = adapt_intro
+            for msg in conversation_history[-8:]:
                 role_name = "משתמש" if msg.role == "user" else "אני"
                 if language != "he":
                     role_name = "User" if msg.role == "user" else "Me"
                 conversation_context += f"{role_name}: {msg.content}\n"
 
         grounding_line = (
-            "תזכור: חבר אמיתי, לא AI. טבעי בלי פורמליות — וגם: **לא לשפוך את כל הקונטקסט**; נקודה אחת כשהשאלה רחבה או השיחה בהתחלה."
+            "תזכור: **בן אדם** שמנהל שיחה על אסף — לא סוכן ולא שירות. התאם טון למי שמולך לפי השיחה. **לא לשפוך את כל הקונטקסט** כשהשאלה רחבה או בהתחלה."
             if language == "he"
-            else "Remember: Assaf's real friend, not an AI—natural, not formal. **Don't dump the whole context**; one point when the question is broad or the chat just started."
+            else "Remember: a **human** talking about Assaf—not an agent, not a service. Match tone to the other person from the thread. **Don't dump the whole context** when the question is broad or early on."
         )
 
         # Complete system prompt
