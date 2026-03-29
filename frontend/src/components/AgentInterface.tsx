@@ -144,9 +144,17 @@ export default function AgentInterface() {
                 </div>
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Assaf Azran
-                </h1>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    Assaf Azran
+                  </h1>
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-md bg-gradient-to-r from-purple-500/15 to-pink-500/15 text-purple-700 border border-purple-200/90 shadow-sm"
+                    title="This product is in beta"
+                  >
+                    Beta
+                  </span>
+                </div>
                 <p className="text-gray-600 text-sm">Personal AI Agent</p>
               </div>
             </motion.div>
