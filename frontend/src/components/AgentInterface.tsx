@@ -7,8 +7,17 @@ import React, {
   useCallback,
   memo,
 } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, User, Bot, Globe, Sparkles, MessageCircle } from "lucide-react";
+import {
+  Send,
+  User,
+  Bot,
+  Globe,
+  Sparkles,
+  MessageCircle,
+  MessageSquareText,
+} from "lucide-react";
 import {
   chatApi,
   type ChatRequest,
@@ -446,8 +455,15 @@ export default function AgentInterface() {
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
-            className="flex items-center gap-2"
+            className="flex flex-wrap items-center justify-center gap-2 sm:justify-end"
           >
+            <Link
+              href="/feedback"
+              className="inline-flex items-center gap-2 rounded-full border border-violet-200/80 bg-white/80 px-4 py-2 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur-sm transition hover:border-violet-300 hover:bg-white"
+            >
+              <MessageSquareText className="h-3.5 w-3.5 text-violet-600" />
+              Feedback
+            </Link>
             <div className="inline-flex items-center gap-2 rounded-full border border-violet-200/80 bg-white/80 px-4 py-2 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur-sm">
               <Globe className="h-3.5 w-3.5 text-violet-600" />
               English UI · Hebrew supported

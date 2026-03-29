@@ -36,6 +36,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      # Live code from host (otherwise the image only updates after `docker compose build backend`)
+      - ./app:/app/app
+      - ./api:/app/api
       - ./uploads:/app/uploads
       - ./data:/app/data
       - ./static:/app/static
