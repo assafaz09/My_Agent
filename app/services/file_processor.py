@@ -81,7 +81,7 @@ class FileProcessor:
     async def _extract_text(self, file_path: str, file_type: str) -> str:
         """Extract text from various file types"""
         try:
-            if file_type == "txt":
+            if file_type in ("txt", "md"):
                 return await self._extract_from_txt(file_path)
             elif file_type == "pdf":
                 return await self._extract_from_pdf(file_path)
