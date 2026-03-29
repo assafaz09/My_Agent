@@ -58,6 +58,25 @@ class Settings(BaseSettings):
     session_timeout: int = 3600  # 1 hour
     max_conversation_length: int = 20
 
+    @field_validator("elasticsearch_host", mode="before")
+    @classmethod
+    def _clean_elasticsearch_host(cls, v):
+        """
+        Host must be a hostname only (no scheme). Elastic Cloud / dashboards often
+        copy 'https://cluster-id.region.gcp.cloud.es.io' which breaks DNS if kept as-is.
+        """
+        if not isinstance(v, str):
+            return v
+        v = v.strip()
+        lower = v.lower()
+        if lower.startswith("https://"):
+            v = v[8:]
+        elif lower.startswith("http://"):
+            v = v[7:]
+        if "/" in v:
+            v = v.split("/", 1)[0]
+        return v.strip()
+
     @field_validator("qdrant_port", "elasticsearch_port", mode="before")
     @classmethod
     def _clean_port_values(cls, v):
