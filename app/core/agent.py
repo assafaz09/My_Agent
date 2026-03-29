@@ -236,7 +236,22 @@ class PersonalAgent:
             for i, chunk in enumerate(relevant_knowledge, 1):
                 knowledge_context += f"{i}. {chunk.content}\n"
         else:
-            knowledge_context = "\n\וואלה התקלת אותי אני לא יודע את התשובה אני אבדוק את זה " if language == "he" else "\n\nI don't have specific information about this from Assaf's documents."
+            knowledge_context = "\n\nוואלה התקלת אותי אני לא יודע את התשובה אני אבדוק את זה " if language == "he" else "\n\nI don't have specific information about this from Assaf's documents."
+
+        knowledge_discipline = (
+            "\n\n---\nחובה: למעלה יכולים להופיע כמה קטעים ממוספרים — **זה לא אומר לשלב את כולם בתשובה אחת**. בשאלה רחבה או בשיחה מוקדמת: בחר **נקודה או זווית אחת בלבד**; השאר לשאלות המשך.\n---"
+            if language == "he"
+            else "\n\n---\nMandatory: There may be several numbered excerpts above—that does **not** mean merge them all into one reply. On a broad question or early in the chat: pick **ONE angle only**; save the rest for follow-ups.\n---"
+        )
+
+        user_turns = sum(1 for m in conversation_history if m.role == "user")
+        early_chat_layering = ""
+        if user_turns <= 2:
+            early_chat_layering = (
+                "\n🔴 **שיחה מוקדמת** (מעט הודעות מהמשתמש) — **חובה**: תשובה קצרה, **עד נקודה אחת** מהחומר; אל תסכם את כל הקטעים.\n"
+                if language == "he"
+                else "\n🔴 **Early thread** (few user messages so far) — **required**: short reply, **at most one point** from the material; do not summarize every excerpt.\n"
+            )
 
         # Tone snippets (style-only). Never present these as facts.
         if language == "he":
@@ -273,9 +288,9 @@ class PersonalAgent:
                 conversation_context += f"{role_name}: {msg.content}\n"
 
         grounding_line = (
-            "תזכור: אתה חבר אמיתי של אסף, לא AI. דבר בצורה טבעית, בלי פורמליות מיותרת."
+            "תזכור: חבר אמיתי, לא AI. טבעי בלי פורמליות — וגם: **לא לשפוך את כל הקונטקסט**; נקודה אחת כשהשאלה רחבה או השיחה בהתחלה."
             if language == "he"
-            else "Remember: you're Assaf's real friend, not an AI. Be natural and casual, without corporate formalities."
+            else "Remember: Assaf's real friend, not an AI—natural, not formal. **Don't dump the whole context**; one point when the question is broad or the chat just started."
         )
 
         # Complete system prompt
@@ -289,7 +304,7 @@ class PersonalAgent:
             {tone_context}
             {tone_fact_disclaimer}
 
-            {knowledge_context}
+            {knowledge_context}{knowledge_discipline}{early_chat_layering}
 
             {conversation_context}
 
