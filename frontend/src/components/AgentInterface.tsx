@@ -99,8 +99,7 @@ const ChatMessages = memo(function ChatMessages({
             transition={{ delay: 0.2 }}
           >
             <span className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-600 bg-clip-text text-transparent">
-              {" "}
-              welcome!
+              Hi there
             </span>
           </motion.h2>
           <motion.p
@@ -109,8 +108,7 @@ const ChatMessages = memo(function ChatMessages({
             transition={{ delay: 0.35 }}
             className="mx-auto mt-5 max-w-md text-base leading-relaxed text-zinc-600"
           >
-            I&apos;m Assaf&apos;s personal agent — ask anything about him, in
-            English or Hebrew.
+            English or Hebrew — ask whatever you&apos;re curious about.
           </motion.p>
           <motion.div
             initial={{ opacity: 0 }}
